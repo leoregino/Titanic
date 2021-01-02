@@ -1,0 +1,25 @@
+name: Continuous Integration
+
+on: [push]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+      - name: Black
+        uses: ./docker/action
+        with:
+          command: black --check titanic_ML
+      - name: Flake8
+        uses: ./docker/action
+        with:
+          command: flake8 titanic_ML
+      - name: Unit Tests
+        uses: ./docker/action
+        with:
+          command: pytest titanic_ML
+        env:
+          MLFLOW_TRACKING_URI: /mnt/experiments
+          MLFLOW_ARTIFACT_LOCATION: 
