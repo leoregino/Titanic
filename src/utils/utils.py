@@ -3,16 +3,16 @@ import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
 import re
 
 def get_size_family(df):
-
     """Defines family relations based on the features 'SibSp' (the # of siblings / spouses aboard the Titanic)
     and 'Parch' (the # of parents / children aboard the Titanic)
 
     Parameters
     ----------
     df : panda dataframe
+    
     Returns
     -------
-    New feature called FamilySize
+    Original dataframe with a new feature called 'FamilySize'
     """
     df['FamilySize'] = df['SibSp'] + df['Parch'] + 1
 
@@ -24,9 +24,10 @@ def modify_fare(df):
     Parameters
     ----------
     df : panda dataframe
+    
     Returns
     -------
-    Discretized version of the feature Fare
+    Original dataframe with discretized version of the feature 'Fare'
     """
     df['Fare'] = df['Fare'].fillna(df['Fare'].median())
     df.loc[df['Fare'] <= 7.91, 'Fare'] = 0
@@ -42,10 +43,11 @@ def get_title(name):
 
     Parameters
     ----------
-    name : The name in which the title wants to be extracted (string)
+    name : The name from which a title wants to be extracted (string)
+    
     Returns
     -------
-    Discretized version of the feature Fare
+    String associated to a found title
     """
     title_search = re.search(' ([A-Za-z]+)\.', name)
     # If the title exists, extract and return it.
@@ -55,15 +57,16 @@ def get_title(name):
     return ""
 
 def get_titles(df, mod: bool = True):
-    """Search for all titles inside a dataframe for the feature Name
+    """Search for all titles inside a dataframe, given the feature 'Name'
 
     Parameters
     ----------
     df : panda dataframe
     mod : simplify the extend of titles available (boolean)
+    
     Returns
     -------
-    Discretized version of the feature Fare
+    Original dataframe with a new feature called 'Title'
     """
     df['Title'] = df['Name'].apply(get_title)
     if mod:
@@ -75,14 +78,16 @@ def get_titles(df, mod: bool = True):
     return df
 
 def get_new_ages(df):
-    """Search for all titles inside a dataframe for the feature Name
+    """Fills in empty Ages based on the Title of a person, and then introduces intervals for the feature 'Ages', 
+    such that it is modified from being continuous to be discrete
 
     Parameters
     ----------
     df : panda dataframe
+    
     Returns
     -------
-    Discretized version of the feature Fare
+    Discretized version of the feature 'Age'
     """
     emb = []
 
@@ -104,6 +109,16 @@ def get_new_ages(df):
     return df
 
 def modify_titles(df):
+    """Concatenates titles found to be similar or considered to be simplified in one category
+
+    Parameters
+    ----------
+    df : panda dataframe
+    
+    Returns
+    -------
+    Simplified categories in the features 'Title'
+    """
     # join less representative cotegories
     df['Title'] = df['Title'].replace(['Lady', 'Countess',
                                        'Capt', 'Col', 'Don', 'Dr', 'Major',
@@ -111,6 +126,16 @@ def modify_titles(df):
     return df
 
 def get_deck(name):
+    """Search for individual Capital letter inside a string associated to the cabin of a person, from  A-Z
+
+    Parameters
+    ----------
+    name : The name from which a deck wants to be extracted (string)
+    
+    Returns
+    -------
+    Letter associated with the deck from that a person has
+    """    
     if pd.isnull(name):
         return 'None'
     else:
@@ -122,12 +147,35 @@ def get_deck(name):
             return 'None'
 
 def get_decks(df):
+    """Search for the information of all decks inside a dataframe, given the feature 'Cabin'
+
+    Parameters
+    ----------
+    df : panda dataframe
+    
+    Returns
+    -------
+    Original dataframe with a new feature called 'Deck'
+    """
+    
     df['Deck'] = df['Cabin'].apply(get_deck)
     # Modifications
     df['Deck'] = df['Deck'].replace('T', 'None')
     return df
 
 def embarked_bayes(df, i):
+    """Using Bayes Theorem, and based on 'Pclass', determine the probability of 'Embarked' for a person 
+    given the possibilities S, C or Q.
+
+    Parameters
+    ----------
+    df : panda dataframe
+    
+    Returns
+    -------
+    String associated to the most likely port from where a passenger Embarked, given its Pclass
+    """
+    
     pclass_ = df['Pclass'].iloc[i]
     # P(s|1) = P(s)*P(1|S)/[ P(s)*P(1|s) + P(s)*P(1|s) + P(s)*P(1|s)] # probability that given the class 1, the person came from port S
     P_S, P_C, P_Q = df['Embarked'].value_counts()['S'], df['Embarked'].value_counts()['C'], \
@@ -151,6 +199,16 @@ def embarked_bayes(df, i):
         return 'Q'
 
 def get_embarked_bayes(df):
+    """Search for the Embarked information of passengers missing this data, based on its 'Pclass'
+
+    Parameters
+    ----------
+    df : panda dataframe
+    
+    Returns
+    -------
+    Original dataframe with all missing values from the feature 'Embarked'
+    """
     emb = []
     for i, Port in df.iterrows():
         if pd.isnull(Port['Embarked']):
@@ -186,7 +244,17 @@ def transform_cat_to_num(df):
     return df
 
 def drop_features(df, to_drop):
+    """Drop unwanted features 
 
+    Parameters
+    ----------
+    df      : panda dataframe
+    to_drop : array with name of features to be dropped
+    
+    Returns
+    -------
+    Original dataframe with all original features but those in to_drop
+    """
     return df.drop(to_drop, axis=1)
 
 
@@ -206,3 +274,24 @@ def pipeline_features(df, to_drop):
 
     return df
 
+def make_prediction(model, X_train_data, Y_train, frame):
+    """Add predictions from a specific model to the dataframe (test)
+
+    Parameters
+    ----------
+    model                 : model considered for fitting training data (object)
+    X_train_data, Y_train : array with training features and target labels
+    frame                 : testing frame where to add predictions from trained model 
+    
+    Returns
+    -------
+    Original dataframe with new feature 'Survived', calculated by using a specific model
+    """
+    
+    model.fit(X_train_data, Y_train)
+    
+    predictions = model.predict(frame.drop(columns = ['PassengerId']))
+    
+    frame['Survived'] = predictions
+    
+    return frame
