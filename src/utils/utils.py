@@ -1,6 +1,41 @@
 import numpy as np # linear algebra
 import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+import string
 import re
+
+def modify_fare(df, n: int = 4):
+    
+    """Introduce n new intervals for the feature fare, such that it is modified from being continuous to be discrete
+
+    Parameters
+    ----------
+    df : panda dataframe
+    n: number of new intervals (int)
+    
+    Returns
+    -------
+    Original dataframe with discretized version of the feature 'Fare', categories
+    """
+    df['Fare'] = df['Fare'].fillna(df['Fare'].median())
+    df['Fare'] = pd.qcut(df['Fare'], n, labels = list(string.ascii_uppercase)[:n])
+    
+    return df
+
+def get_if_alone(df):
+    """Indicate if a person is alone based on the 'Familysize'
+
+    Parameters
+    ----------
+    df : panda dataframe
+    
+    Returns
+    -------
+    String with a Yes or No
+    """
+    df['Alone'] = 'No'
+    df.loc[df['FamilySize'] == 1, 'Alone'] = 'Yes'
+    
+    return df
 
 def get_size_family(df):
     """Defines family relations based on the features 'SibSp' (the # of siblings / spouses aboard the Titanic)
@@ -15,26 +50,6 @@ def get_size_family(df):
     Original dataframe with a new feature called 'FamilySize'
     """
     df['FamilySize'] = df['SibSp'] + df['Parch'] + 1
-
-    return df
-
-def modify_fare(df):
-    """Introduce new intervals for the feature fare, such that it is modified from being continuous to be discrete
-
-    Parameters
-    ----------
-    df : panda dataframe
-    
-    Returns
-    -------
-    Original dataframe with discretized version of the feature 'Fare'
-    """
-    df['Fare'] = df['Fare'].fillna(df['Fare'].median())
-    df.loc[df['Fare'] <= 7.91, 'Fare'] = 0
-    df.loc[(df['Fare'] > 7.91) & (df['Fare'] <= 14.454), 'Fare'] = 1
-    df.loc[(df['Fare'] > 14.454) & (df['Fare'] <= 31), 'Fare'] = 2
-    df.loc[df['Fare'] > 31, 'Fare'] = 3
-    df['Fare'] = df['Fare'].astype(int)
 
     return df
 
@@ -77,17 +92,18 @@ def get_titles(df, mod: bool = True):
 
     return df
 
-def get_new_ages(df):
-    """Fills in empty Ages based on the Title of a person, and then introduces intervals for the feature 'Ages', 
+def get_all_ages(df, n: int = 5):
+    """Fills in empty Ages based on the Title of a person, and then introduces n intervals for the feature 'Ages', 
     such that it is modified from being continuous to be discrete
 
     Parameters
     ----------
     df : panda dataframe
+    n: number of new intervals (int)
     
     Returns
     -------
-    Discretized version of the feature 'Age'
+    Discretized version of the feature 'Age', categories
     """
     emb = []
 
@@ -103,8 +119,7 @@ def get_new_ages(df):
     # Update column
     df['Age'] = emb
     # Create new column
-    df["Age"] = pd.cut(df["Age"], bins=[0, 16, 32, 48, 64, np.inf],
-                       labels=['Childs', 'Young Adult', 'Adult', 'Senior', 'Oldy'], right=False)
+    df["Age"] = pd.cut(df["Age"], n, labels = list(string.ascii_uppercase)[:n])
 
     return df
 
@@ -219,30 +234,6 @@ def get_embarked_bayes(df):
     df['Embarked'] = emb
     return df
 
-def transform_cat_to_num(df):
-    # dictionary to transform gender to numerical
-    sec_dic = {'male': 0, 'female': 1}
-    # dictionary to transform ages to numerical
-    sec_ages = {'Childs': 0, 'Young Adult': 1, 'Adult': 2, 'Senior': 3, 'Oldy': 4}
-    # dictionary to transform embarked to numerical
-    sec_emb = {'S': 0, 'C': 1, 'Q': 2}
-    # dictionary to transform Deck to numerical
-    sec_deck = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'None': 7}
-    # dictionary to transform title to numerical
-    sec_title = {'Master': 0, 'Miss': 1, 'Mr': 2, 'Mrs': 3, 'Rare': 4}
-    # transform Sex to numerical
-    df['Sex'] = df['Sex'].map(sec_dic).astype(int)
-    # transform Age to numerical
-    df['Age'] = df['Age'].map(sec_ages).astype(int)
-    # transform Embarked to numerical
-    df['Embarked'] = df['Embarked'].map(sec_emb).astype(int)
-    # transform Deck to numerical
-    df['Deck'] = df['Deck'].map(sec_deck).astype(int)
-    # transform Title to numerical
-    df['Title'] = df['Title'].map(sec_title).astype(int)
-
-    return df
-
 def drop_features(df, to_drop):
     """Drop unwanted features 
 
@@ -258,23 +249,7 @@ def drop_features(df, to_drop):
     return df.drop(to_drop, axis=1)
 
 
-def pipeline_features(df, to_drop):
-    # get new or modified features
-    df = get_size_family(df)
-    df = modify_fare(df)
-    df = get_titles(df)
-    df = get_new_ages(df)
-    df = modify_titles(df)
-    df = get_decks(df)
-    df = get_embarked_bayes(df)
-    # transformation of categorical to numerical
-    df = transform_cat_to_num(df)
-    # features to drop
-    df = drop_features(df, to_drop)
-
-    return df
-
-def make_prediction(model, X_train_data, Y_train, frame):
+def make_prediction(model, X_train_data, Y_train, X_test):
     """Add predictions from a specific model to the dataframe (test)
 
     Parameters
@@ -290,8 +265,8 @@ def make_prediction(model, X_train_data, Y_train, frame):
     
     model.fit(X_train_data, Y_train)
     
-    predictions = model.predict(frame.drop(columns = ['PassengerId']))
+    predictions = model.predict(X_test.drop(columns = ['PassengerId', 'Survived']))
     
-    frame['Survived'] = predictions
+    frame = pd.DataFrame(data={'PassengerId': X_test['PassengerId'].astype(int), 'Survived': predictions.astype(int)})
     
     return frame
