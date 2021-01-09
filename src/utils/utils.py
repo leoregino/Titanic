@@ -1,11 +1,28 @@
+import os, glob, sys
 import numpy as np # linear algebra
 import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
 import string
 import re
 
-def modify_fare(df, n: int = 4):
+def load_data(path):
+    """Load training and testing datasets based on their path
+
+    Parameters
+    ----------
+    path : relative path to location of data, should be always the same (string)
     
-    """Introduce n new intervals for the feature fare, such that it is modified from being continuous to be discrete
+    Returns
+    -------
+    Training and testing Dataframes
+    """
+    train = pd.read_csv(os.path.join(path,'train.csv'))
+    test = pd.read_csv(os.path.join(path,'test.csv'))
+    
+    return train, test
+    
+def modify_fare(df, n: int = 4):
+    """Introduce n new intervals (based on quantiles) for the feature fare, such that it is modified from
+    being continuous to being discrete
 
     Parameters
     ----------
@@ -21,23 +38,7 @@ def modify_fare(df, n: int = 4):
     
     return df
 
-def get_if_alone(df):
-    """Indicate if a person is alone based on the 'Familysize'
-
-    Parameters
-    ----------
-    df : panda dataframe
-    
-    Returns
-    -------
-    String with a Yes or No
-    """
-    df['Alone'] = 'No'
-    df.loc[df['FamilySize'] == 1, 'Alone'] = 'Yes'
-    
-    return df
-
-def get_size_family(df):
+def get_size_family(df, mod: bool = False):
     """Defines family relations based on the features 'SibSp' (the # of siblings / spouses aboard the Titanic)
     and 'Parch' (the # of parents / children aboard the Titanic)
 
@@ -50,7 +51,12 @@ def get_size_family(df):
     Original dataframe with a new feature called 'FamilySize'
     """
     df['FamilySize'] = df['SibSp'] + df['Parch'] + 1
-
+    
+    if mod:
+        
+        bins_ = [0,1,2,12]
+        df['FamilySize'] = pd.cut(df["FamilySize"],  bins = bins_, labels = list(string.ascii_uppercase)[:len(bins_)-1])
+        
     return df
 
 def get_title(name):
@@ -234,6 +240,55 @@ def get_embarked_bayes(df):
     df['Embarked'] = emb
     return df
 
+def get_if_cabin(df):
+    """Indicate if a person has a 'Cabin'
+
+    Parameters
+    ----------
+    df : panda dataframe
+    
+    Returns
+    -------
+    String with a Yes or No
+    """
+    # Feature that tells whether a passenger had a cabin on the Titanic
+    df['Has_Cabin'] = df["Cabin"].apply(lambda x: 'No' if type(x) == float else 'Yes')
+    
+    return df
+
+def get_type_ticket(df):
+    """Indicate if a person has a 'Ticket'
+
+    Parameters
+    ----------
+    df : panda dataframe
+    
+    Returns
+    -------
+    Categorical unique code
+    """
+    # Feature that tells whether a passenger had a cabin on the Titanic
+    df['Type_Ticket'] = df['Ticket'].apply(lambda x: x[0:3])
+    df['Type_Ticket'] = df['Type_Ticket'].astype('category').cat.codes # ordinal encoding
+    df['Type_Ticket'] = df['Type_Ticket'].astype(int)
+    return df
+
+def get_count_name(df):
+    """Indicate if a person has a 'Name'
+
+    Parameters
+    ----------
+    df : panda dataframe
+    
+    Returns
+    -------
+    Categorical unique code
+    """
+    # Feature that tells whether a passenger had a cabin on the Titanic
+    df['Words_Count'] = df['Name'].apply(lambda x: len(x.split())).astype(int)
+    
+    return df
+
 def drop_features(df, to_drop):
     """Drop unwanted features 
 
@@ -247,26 +302,3 @@ def drop_features(df, to_drop):
     Original dataframe with all original features but those in to_drop
     """
     return df.drop(to_drop, axis=1)
-
-
-def make_prediction(model, X_train_data, Y_train, X_test):
-    """Add predictions from a specific model to the dataframe (test)
-
-    Parameters
-    ----------
-    model                 : model considered for fitting training data (object)
-    X_train_data, Y_train : array with training features and target labels
-    frame                 : testing frame where to add predictions from trained model 
-    
-    Returns
-    -------
-    Original dataframe with new feature 'Survived', calculated by using a specific model
-    """
-    
-    model.fit(X_train_data, Y_train)
-    
-    predictions = model.predict(X_test.drop(columns = ['PassengerId', 'Survived']))
-    
-    frame = pd.DataFrame(data={'PassengerId': X_test['PassengerId'].astype(int), 'Survived': predictions.astype(int)})
-    
-    return frame
