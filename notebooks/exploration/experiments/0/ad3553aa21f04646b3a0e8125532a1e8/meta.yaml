@@ -1,0 +1,15 @@
+artifact_uri: ./experiments/0/ad3553aa21f04646b3a0e8125532a1e8/artifacts
+end_time: 1610278624449
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+name: ''
+run_id: ad3553aa21f04646b3a0e8125532a1e8
+run_uuid: ad3553aa21f04646b3a0e8125532a1e8
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1610278624429
+status: 4
+tags: []
+user_id: root
