@@ -129,6 +129,50 @@ def get_all_ages(df, n: int = 5):
 
     return df
 
+def get_age2(df):
+    """Fills in empty Ages based on the Title of a person. DR 
+
+    Parameters
+    ----------
+    df : panda dataframe
+    
+    Returns
+    -------
+    Dataframe with missing values for age filled.
+    """
+
+    ages_mean = df[['Title', 'Age']].groupby(['Title'],
+                                             as_index=False).mean().set_index('Title').rename(columns={'Age': 'mean'})
+    ages_std = df[['Title', 'Age']].groupby(['Title'], as_index=False).std().set_index('Title').rename(columns={'Age': 'std'})
+    ages_title = pd.merge(ages_mean,ages_std, how='inner', left_index=True, right_index=True)
+
+    age = []     
+    for i, Port in df.iterrows():
+        if pd.isnull(Port['Age']): 
+            age.append(np.random.normal(ages_title.loc[Port['Title'],'mean'],ages_title.loc[Port['Title'],'std']))  
+        else:
+            age.append(Port['Age'])
+    # Update column             
+    df['Age'] = age
+    return df
+
+
+def get_age_group(df,n: int=10):
+    """Assigns a category to the age DR
+
+    Parameters
+    ----------
+    df : Dataframe
+    
+    n : number of categories
+    Returns
+    -------
+    Dataset with Age_group column
+    """
+    
+    df["Age_group"] = pd.cut(df["Age"], n, labels = list(string.ascii_uppercase)[:n])
+    return df
+
 def modify_titles(df):
     """Concatenates titles found to be similar or considered to be simplified in one category
 
@@ -167,6 +211,8 @@ def get_deck(name):
         else:
             return 'None'
 
+        
+        
 def get_decks(df):
     """Search for the information of all decks inside a dataframe, given the feature 'Cabin'
 
