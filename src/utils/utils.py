@@ -302,3 +302,26 @@ def drop_features(df, to_drop):
     Original dataframe with all original features but those in to_drop
     """
     return df.drop(to_drop, axis=1)
+
+def bookkeeping_results(frame, name, model, cv_):
+    """Dataframe to save results from experiment
+
+    Parameters
+    ----------
+    frame   : empty dataframe with desired features
+    name    : name model to save, string
+    model   : model used, object
+    cv_     : results from cross validation, array
+
+    Returns
+    -------
+    Updated original dataframe with the new added result from model
+    """
+    # Initialize a dictionary to save the results.
+    res = {}
+    res['Model']       = name
+    res['best_params'] = [model.get_params()]
+    res['cv_acc']      = cv_.mean() * 100
+    res['cv_acc_std']  = cv_.std() * 100
+    
+    return pd.concat([frame, pd.DataFrame(res)], ignore_index=True)
